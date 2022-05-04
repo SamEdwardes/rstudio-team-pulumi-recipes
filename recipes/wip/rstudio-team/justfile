@@ -1,0 +1,32 @@
+ssh-rsw: ip-rsw
+    ssh -i rsa ubuntu@$(pulumi stack output workbench_public_dns) 
+
+ssh-rspm: ip-rspm
+    ssh -i rsa ubuntu@$(pulumi stack output package_manager_public_dns) 
+
+ssh-rsc: ip-rsc
+    ssh -i rsa ubuntu@$(pulumi stack output connect_public_dns)
+
+up:
+    pulumi up -y --logtostderr -v=3 2> logs.txt
+
+destroy:
+    pulumi destroy -y --logtostderr -v=3 2> logs.txt
+
+open-rsw: ip-rsw
+    open http://$(pulumi stack output workbench_public_ip):8787
+
+open-rsc: ip-rsc
+    open http://$(pulumi stack output connect_public_ip):3939
+
+open-rspm: ip-rspm
+    open http://$(pulumi stack output package_manager_public_ip):4242
+
+ip-rspm:
+    rich --rule $(pulumi stack output package_manager_public_ip)
+
+ip-rsw:
+    rich --rule $(pulumi stack output workbench_public_ip)
+
+ip-rsc:
+    rich --rule $(pulumi stack output connect_public_ip)

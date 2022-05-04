@@ -1,0 +1,8 @@
+restart:
+    sudo rstudio-server restart
+
+status:
+    sudo rstudio-server status
+
+edit:
+    sudo vim /etc/rstudio/rserver.conf

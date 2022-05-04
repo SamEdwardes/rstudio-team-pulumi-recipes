@@ -1,0 +1,6 @@
+name: landing-page
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: RStudio team landing page and proxy

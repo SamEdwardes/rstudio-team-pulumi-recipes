@@ -1,0 +1,213 @@
+set dotenv-load
+
+SERVER_IP_ADDRESS := env_var("SERVER_IP_ADDRESS")
+RSC_LICENSE := env_var("RSC_LICENSE")
+
+# -----------------------------------------------------------------------------
+# Build RSC
+# -----------------------------------------------------------------------------
+
+# Install RStudio Connect and all of the dependencies
+build-rsc: 
+    # Basic setup
+    just install-linux-tools 
+    
+    # Install RSW and required dependencies
+    just install-r 
+    just symlink-r
+    just install-rsc
+
+    # Set up config files
+    just set-rstudio-connect-gcfg
+
+    # Restart
+    just restart
+
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+
+# Restart RStudio Connect
+restart:
+    sudo systemctl restart rstudio-connect
+
+stop:
+    sudo systemctl stop rstudio-connect 
+
+start:
+    sudo systemctl start rstudio-connect 
+
+# Check the status for RStudio Connect
+status:
+    sudo systemctl status rstudio-connect
+
+# Edit the RStudio Connect configurationn file /etc/rstudio-connect/rstudio-connect.gcfg
+edit:
+    sudo vim /etc/rstudio-connect/rstudio-connect.gcfg
+
+usermanager args:
+    sudo /opt/rstudio-connect/bin/usermanager {{args}}
+
+# -----------------------------------------------------------------------------
+# Install
+# -----------------------------------------------------------------------------
+
+# Install helpful linux tools
+install-linux-tools:
+    sudo apt-get update
+    sudo apt-get install -y tree
+    sudo apt-get install -y bat
+    sudo apt-get install -y gdebi-core
+    echo "alias bat='batcat --paging never'" >> ~/.bashrc
+
+# Install and activate RStudio Connect
+install-rsc:
+    curl -O https://cdn.rstudio.com/connect/2022.02/rstudio-connect_2022.02.3~ubuntu20_amd64.deb
+    sudo gdebi rstudio-connect_2022.02.3~ubuntu20_amd64.deb -n
+    
+    # Activate license
+    sudo /opt/rstudio-connect/bin/license-manager activate {{RSC_LICENSE}}
+    
+    # Install system dependencies
+    sudo apt install -y perl make libpng-dev tcl tk tk-dev tk-table default-jdk \
+        imagemagick libmagick++-dev gsfonts libxml2-dev git libssl-dev \
+        libcurl4-openssl-dev libjpeg-dev zlib1g-dev unixodbc-dev libfreetype6-dev \
+        libfribidi-dev libharfbuzz-dev libsodium-dev libglu1-mesa-dev \
+        libgl1-mesa-dev libssh2-1-dev libicu-dev libmysqlclient-dev libgeos-dev \
+        libgdal-dev gdal-bin libproj-dev libcairo2-dev libglpk-dev libgmp3-dev \
+        cmake python3 libv8-dev libudunits2-dev libfontconfig1-dev libtiff-dev
+    
+    # Install requirements for Python APIs and interactive appplications
+    sudo apt install -y libev-dev 
+
+# Install R
+install-r r_version='4.1.2':
+    curl -O https://cdn.rstudio.com/r/ubuntu-2004/pkgs/r-{{r_version}}_1_amd64.deb
+    sudo gdebi r-{{r_version}}_1_amd64.deb -n
+
+
+# -----------------------------------------------------------------------------
+# Linux mgmt
+# -----------------------------------------------------------------------------
+
+# Create a symlink for R
+symlink-r r_version='4.1.2':
+    sudo ln -s /opt/R/{{r_version}}/bin/R /usr/local/bin/R
+    sudo ln -s /opt/R/{{r_version}}/bin/Rscript /usr/local/bin/Rscript
+
+# -----------------------------------------------------------------------------
+# Configuration files
+# -----------------------------------------------------------------------------
+
+# Settings for /etc/rstudio-connect/rstudio-connect.gcfg
+set-rstudio-connect-gcfg:
+    #!/bin/bash
+    sudo bash -c 'cat <<EOF > /etc/rstudio-connect/rstudio-connect.gcfg
+    ; /etc/rstudio-connect/rstudio-connect.gcfg
+
+    ; RStudio Connect configuration file
+
+    ; See the Appendices - Configuration section of the
+    ; RStudio Connect Admin Guide for details on the configuration file format.
+
+    ; [ExampleSection]
+    ; BooleanProperty = true
+    ; DecimalProperty = 0.217
+    ; StringProperty1 = "hello"
+    ; StringProperty2 = "escape \"quotes\" within a value"
+    ; MultiListProperty = "black"
+    ; MultiListProperty = "blue"
+    ; MultiListProperty = "green"
+    ; DurationProperty = 300s
+
+
+    [Server]
+    ; Address is a public URL for this RStudio Connect server. Must be configured
+    ; to enable features like including links to your content in emails. If
+    ; Connect is deployed behind an HTTP proxy, this should be the URL for Connect
+    ; in terms of that proxy.
+    ;
+    ; Address = "http://rstudio-connect.example.com"
+
+    ; SenderEmail is an email address used by RStudio Connect to send outbound
+    ; email. The system will not be able to send administrative email until this
+    ; setting is configured.
+    ;
+    ; SenderEmail = "no-reply@example.com"
+
+    ; Uncomment one of the following definitions to enable email-related features.
+    ; EmailProvider = "SMTP"
+    ; EmailProvider = "sendmail"
+
+
+    RVersionScanning = false
+    RVersion = "/opt/R/4.1.2"
+    EmailProvider = "none"
+    DataDir = "/var/lib/rstudio-connect"
+    TempDir = "/tmp"
+
+
+    ; If using SMTP, uncomment this section to configure an email server.
+    ; [SMTP]
+    ; Host = "smtp.example.com"
+    ; Port = 587
+    ; SSL = false
+    ; StartTLS = "detect"
+    ; User = "no-reply@example.com"
+    ; Password = "secret"
+
+
+    [HTTP]
+    ; RStudio Connect will listen on this network address for HTTP connections.
+    Listen = ":3939"
+
+    [Authentication]
+    Provider = "password"
+
+    [Password]
+    ; When attempting to troubleshoot a problem relating to Password Authentication, 
+    ; you can enable more verbose logging by enabling the following line
+    ;Logging = true
+
+    [Database]
+    Provider = "SQLite"
+
+    [SQLite]
+    Dir = "/var/lib/rstudio-connect/db"
+
+    [RPackageRepository "CRAN"]
+    URL = "https://packagemanager.rstudio.com/cran/__linux__/focal/latest"
+
+    [RPackageRepository "RSPM"]
+    URL = "https://packagemanager.rstudio.com/cran/__linux__/focal/latest"
+
+    [Python]
+    Enabled = false
+
+    ; [PAM]
+    ; Service = "rstudio-connect"
+    ; UseSession = false
+    ; ForwardPassword = false
+    ; Logging = true
+
+    [Applications]
+    RunAsCurrentUser = false
+
+    ; [Quarto]
+    ; Enabled = true
+    ; Executable = "/usr/local/bin/quarto"
+
+    ; Notes from documentation -------------------------------
+
+    ; [Server]
+    ; Address = "https://rstudio-connect.company.com"
+    ; EmailProvider = "SMTP"
+    ; SenderEmail = "account@company.com"
+
+    ; [SMTP]
+    ; Host = "smtp.example.com"
+    ; Port = 587
+    ; User = "service-user"
+    ; Password = "service-password"
+    EOF'
+

@@ -1,0 +1,49 @@
+write:
+    #!/bin/zsh
+    cat <<EOF > tmp-config.txt
+    line 1
+    line 2
+    EOF
+
+ssh-rsw-1:
+    ssh \
+        -i rsa \
+        -o StrictHostKeyChecking=no \
+        ubuntu@$(pulumi stack output rsw_1_public_dns)
+
+ssh-rsw-2:
+    ssh \
+        -i rsa \
+        -o StrictHostKeyChecking=no \
+        ubuntu@$(pulumi stack output rsw_2_public_dns)
+
+up:
+    pulumi up -y --logtostderr -v=3 2> tmp_logs.txt
+
+destroy:
+    pulumi destroy -y --logtostderr -v=3 2> tmp_logs.txt
+
+open-1:
+    open http://$(pulumi stack output rsw_1_public_ip):8787
+
+open-2:
+    open http://$(pulumi stack output rsw_2_public_ip):8787
+
+
+status:
+    curl http://$(pulumi stack output rsw_1_public_ip):8787/load-balancer/status
+    curl http://$(pulumi stack output rsw_2_public_ip):8787/load-balancer/status
+
+
+ip:
+    echo $(pulumi stack output rsw_1_public_ip)
+    echo $(pulumi stack output rsw_2_public_ip)
+
+
+create-remote-env server_name='rsw_1_public_ip' file_name='.env':
+    echo "export SERVER_IP_ADDRESS=$(pulumi stack output {{server_name}})" > {{file_name}}
+    echo "export RSW_LICENSE=${RSW_LICENSE}" >> {{file_name}}
+    echo "export DB_ADDRESS=$(pulumi stack output db_address)" >> {{file_name}}
+    echo "export EFS_ID=$(pulumi stack output efs_id)" >> {{file_name}}
+    @rich --rule "$(pulumi stack output {{server_name}})"
+    @rich {{file_name}}

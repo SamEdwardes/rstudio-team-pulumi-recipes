@@ -1,0 +1,109 @@
+; /etc/rstudio-connect/rstudio-connect.gcfg
+
+; RStudio Connect configuration file
+
+; See the Appendices - Configuration section of the
+; RStudio Connect Admin Guide for details on the configuration file format.
+
+; [ExampleSection]
+; BooleanProperty = true
+; DecimalProperty = 0.217
+; StringProperty1 = "hello"
+; StringProperty2 = "escape \"quotes\" within a value"
+; MultiListProperty = "black"
+; MultiListProperty = "blue"
+; MultiListProperty = "green"
+; DurationProperty = 300s
+
+
+[Server]
+; Address is a public URL for this RStudio Connect server. Must be configured
+; to enable features like including links to your content in emails. If
+; Connect is deployed behind an HTTP proxy, this should be the URL for Connect
+; in terms of that proxy.
+;
+; Address = "http://rstudio-connect.example.com"
+
+; SenderEmail is an email address used by RStudio Connect to send outbound
+; email. The system will not be able to send administrative email until this
+; setting is configured.
+;
+; SenderEmail = "no-reply@example.com"
+
+; Uncomment one of the following definitions to enable email-related features.
+; EmailProvider = "SMTP"
+; EmailProvider = "sendmail"
+
+
+RVersionScanning = false
+RVersion = "/opt/R/4.1.2"
+EmailProvider = "none"
+DataDir = "/var/lib/rstudio-connect"
+TempDir = "/tmp"
+
+
+; If using SMTP, uncomment this section to configure an email server.
+; [SMTP]
+; Host = "smtp.example.com"
+; Port = 587
+; SSL = false
+; StartTLS = "detect"
+; User = "no-reply@example.com"
+; Password = "secret"
+
+
+[HTTP]
+; RStudio Connect will listen on this network address for HTTP connections.
+Listen = ":3939"
+
+
+[Authentication]
+Provider = "password"
+
+[Password]
+; When attempting to troubleshoot a problem relating to Password Authentication, 
+; you can enable more verbose logging by enabling the following line
+;Logging = true
+
+[Database]
+Provider = "SQLite"
+
+[SQLite]
+Dir = "/var/lib/rstudio-connect/db"
+
+[RPackageRepository "CRAN"]
+URL = "https://packagemanager.rstudio.com/cran/__linux__/focal/latest"
+
+[RPackageRepository "RSPM"]
+URL = "https://packagemanager.rstudio.com/cran/__linux__/focal/latest"
+
+[Python]
+Enabled = true
+Executable = /opt/python/3.9.7/bin/python
+
+; [PAM]
+; Service = "rstudio-connect"
+; UseSession = false
+; ForwardPassword = false
+; Logging = true
+
+[Applications]
+RunAsCurrentUser = false
+
+; [Quarto]
+; Enabled = true
+; Executable = "/usr/local/bin/quarto"
+
+; Notes from documentation -------------------------------
+
+; [Server]
+; Address = "https://rstudio-connect.company.com"
+; EmailProvider = "SMTP"
+; SenderEmail = "account@company.com"
+
+; [SMTP]
+; Host = "smtp.example.com"
+; Port = 587
+; User = "service-user"
+; Password = "service-password"
+

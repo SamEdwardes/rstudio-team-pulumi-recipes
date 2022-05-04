@@ -1,0 +1,8 @@
+# /etc/rstudio/rsession-profile
+
+export RETICULATE_PYTHON=/opt/python/3.9.7/bin/python
+
+options("repos" = c(
+  "CRAN" = "https://packagemanager.rstudio.com/all/__linux__/focal/latest",
+  "RSPM" = "https://packagemanager.rstudio.com/all/__linux__/focal/latest"
+))

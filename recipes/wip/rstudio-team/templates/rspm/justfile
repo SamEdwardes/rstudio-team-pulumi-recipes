@@ -1,0 +1,8 @@
+restart:
+    sudo systemctl restart rstudio-pm
+
+status:
+    sudo systemctl restart rstudio-pm
+
+edit:
+    sudo vim /etc/rstudio-pm/rstudio-pm.gcfg

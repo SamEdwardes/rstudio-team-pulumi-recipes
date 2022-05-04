@@ -1,0 +1,6 @@
+name: rs-team
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: RStudio team infrasructure

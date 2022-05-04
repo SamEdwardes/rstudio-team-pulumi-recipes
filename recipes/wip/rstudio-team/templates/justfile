@@ -1,0 +1,186 @@
+set dotenv-load
+
+DB_ADDRESS := env_var("DB_ADDRESS")
+SERVER_IP_ADDRESS := env_var("SERVER_IP_ADDRESS")
+EFS_ID := env_var("EFS_ID")  # For example: 'fs-0ae474bb0403fc7c6'
+RSW_LICENSE := env_var("RSW_LICENSE")
+
+# -----------------------------------------------------------------------------
+# Build RSW
+# -----------------------------------------------------------------------------
+
+# Install RStudio workbench and all of the dependencies
+build-rsw: 
+    # Basic setup
+    just install-linux-tools 
+    
+    # Add some test users
+    just add-user sam password
+    just add-user jake password
+    just add-user olivia password
+
+    # Install RSW and required dependencies
+    just install-r '4.1.2'
+    just symlink-r '4.1.2'
+    just install-miniconda
+    just install-python '3.9.7'
+    just install-rsw
+
+    # Set up config files
+    just set-rserver-conf
+    just set-launcher-conf
+
+    # Restart
+    just restart
+
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+
+restart:
+    sudo rstudio-server restart
+
+restart-cluster:
+    sudo rstudio-server reset-cluster
+
+restart-launcher:
+    sudo rstudio-launcher restart
+
+status:
+    sudo rstudio-server status
+
+status-load-balancer:
+    curl http://localhost:8787/load-balancer/status
+
+logs:
+    sudo tail /var/log/rstudio/rstudio-server/rserver.log
+
+list-nodes:
+    sudo rstudio-server list-nodes
+
+edit:
+    sudo vim /etc/rstudio/rserver.conf
+
+edit-database:
+    sudo vim /etc/rstudio/database.conf
+
+edit-load-balancer:
+    sudo vim /etc/rstudio/load-balancer
+
+# -----------------------------------------------------------------------------
+# Install
+# -----------------------------------------------------------------------------
+install-linux-tools:
+    sudo apt-get update
+    sudo apt-get install -y tree
+    sudo apt-get install -y bat
+    sudo apt-get install -y gdebi-core
+    echo "alias bat='batcat --paging never'" >> ~/.bashrc
+
+install-rsw:
+    curl -O https://download2.rstudio.org/server/bionic/amd64/rstudio-workbench-2022.02.0-443.pro2-amd64.deb
+    sudo gdebi rstudio-workbench-2022.02.0-443.pro2-amd64.deb -n
+    sudo rstudio-server license-manager activate {{RSW_LICENSE}}
+
+install-r r_version:
+    curl -O https://cdn.rstudio.com/r/ubuntu-2004/pkgs/r-{{r_version}}_1_amd64.deb
+    sudo gdebi r-{{r_version}}_1_amd64.deb -n
+
+install-efs-utils:
+    #!/bin/bash
+    set -euxo pipefail
+    sudo apt-get -y install binutils
+    git clone https://github.com/aws/efs-utils
+    cd efs-utils
+    ./build-deb.sh
+    sudo apt-get -y install ./build/amazon-efs-utils*deb
+
+install-miniconda:
+    sudo mkdir -p /opt/python
+    sudo curl -fsSL -o /opt/python/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    sudo chmod 755 /opt/python/miniconda.sh
+    sudo /opt/python/miniconda.sh -b -p /opt/python/miniconda
+
+install-python python_version:
+    # Install specific version of python
+    sudo /opt/python/miniconda/bin/conda create --quiet --yes \
+        --prefix /opt/python/{{python_version}} \
+        --channel conda-forge \
+        python={{python_version}}
+
+    # Upgrade required python tools
+    /opt/python/{{python_version}}/bin/pip install --upgrade pip setuptools wheel 
+    sudo /opt/python/{{python_version}}/bin/pip install virtualenv
+
+    # Make python available as a jupyter kernel
+    sudo /opt/python/{{python_version}}/bin/pip install ipykernel
+    sudo /opt/python/{{python_version}}/bin/python -m ipykernel install --name py{{python_version}} --display-name "Python {{python_version}}"
+
+    # Install jupyter stuff.
+    # https://docs.rstudio.com/rsw/integration/jupyter-standalone/#4-install-jupyter-notebooks-jupyterlab-and-python-packages
+    sudo /opt/python/{{python_version}}/bin/pip install jupyter jupyterlab rsp_jupyter rsconnect_jupyter
+    sudo /opt/python/{{python_version}}/bin/jupyter-nbextension install --sys-prefix --py rsp_jupyter
+    sudo /opt/python/{{python_version}}/bin/jupyter-nbextension enable --sys-prefix --py rsp_jupyter
+    sudo /opt/python/{{python_version}}/bin/jupyter-nbextension install --sys-prefix --py rsconnect_jupyter
+    sudo /opt/python/{{python_version}}/bin/jupyter-nbextension enable --sys-prefix --py rsconnect_jupyter
+    sudo /opt/python/{{python_version}}/bin/jupyter-serverextension enable --sys-prefix --py rsconnect_jupyter
+
+    # sudo /opt/python/{{python_version}}/bin/pip install altair beautifulsoup4 \
+    #   cloudpickle cython dask gensim keras matplotlib nltk numpy pandas pillow \
+    #   pyarrow requests scipy scikit-image scikit-learn scrapy seaborn spacy \
+    #   sqlalchemy statsmodels tensorflow xgboost
+
+# -----------------------------------------------------------------------------
+# Linux mgmt
+# -----------------------------------------------------------------------------
+
+add-user name password:
+    #!/bin/bash
+    sudo mkdir -p /mnt/efs/home
+    sudo useradd --create-home --home-dir /mnt/efs/home/{{name}} -s /bin/bash {{name}};
+    echo -e '{{password}}\n{{password}}' | sudo passwd {{name}};
+
+symlink-r r_version:
+    sudo ln -s /opt/R/{{r_version}}/bin/R /usr/local/bin/R
+    sudo ln -s /opt/R/{{r_version}}/bin/Rscript /usr/local/bin/Rscript
+
+# -----------------------------------------------------------------------------
+# Configuration files
+# -----------------------------------------------------------------------------
+
+# Settings for /etc/rstudio/rserver.conf
+set-rserver-conf:
+    #!/bin/bash
+    sudo bash -c 'cat <<EOF > /etc/rstudio/rserver.conf
+    # /etc/rstudio/rserver.conf
+    
+    www-port=8787
+    admin-enabled=1
+    admin-group=sam
+
+    # Share storage
+    server-shared-storage-path=/mnt/efs/rstudio-server/shared-storage
+    secure-cookie-key-file=/mnt/efs/rstudio-server/secure-cookie-key
+    EOF'
+
+# Settings for /etc/rstudio/launcher.conf
+set-launcher-conf:
+    #!/bin/bash
+    sudo bash -c 'cat <<EOF > /etc/rstudio/launcher.conf
+    # /etc/rstudio/launcher.conf
+
+    [server]
+    address=127.0.0.1
+    port=5559
+    server-user=rstudio-server
+    admin-group=rstudio-server
+    authorization-enabled=1
+    thread-pool-size=4
+    enable-debug-logging=1
+
+    scratch-path=/mnt/efs/rstudio-server/scratch
+    
+    [cluster]
+    name=Local
+    type=Local
+    EOF'

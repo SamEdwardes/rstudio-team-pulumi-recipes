@@ -1,0 +1,8 @@
+restart:
+    sudo systemctl restart rstudio-connect
+
+status:
+    sudo systemctl status rstudio-connect
+
+edit:
+    sudo vim /etc/rstudio-connect/rstudio-connect.gcfg

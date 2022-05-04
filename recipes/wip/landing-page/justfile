@@ -1,0 +1,25 @@
+ssh: eip
+    ssh \
+        -i rsa \
+        -o StrictHostKeyChecking=no \
+        ubuntu@$(pulumi stack output eip_public_dns)
+
+up:
+    pulumi up -y --logtostderr -v=3 2> tmp_logs.txt
+
+destroy:
+    pulumi destroy -y --logtostderr -v=3 2> tmp_logs.txt
+
+open:
+    echo $(pulumi stack output landing_page_public_ip)
+    open http://$(pulumi stack output landing_page_public_ip)
+
+ip:
+    rich --rule $(pulumi stack output landing_page_public_ip)
+
+eip:
+    rich --rule $(pulumi stack output eip_public_ip)
+
+eip-dns:
+    rich --rule $(pulumi stack output eip_public_dns)
+

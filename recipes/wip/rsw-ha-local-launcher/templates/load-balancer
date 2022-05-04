@@ -1,0 +1,4 @@
+# /etc/rstudio/load-balancer
+
+balancer=sessions
+www-host-name=3.96.47.5:8787
