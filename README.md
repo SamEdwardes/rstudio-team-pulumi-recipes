@@ -21,7 +21,7 @@ A high availability deployment of RStudio Workbench with no launcher (e.g. R onl
 
 ### (2) Single Server RStudio Connect
 
-**[recipes/rsw-ha](recipes/rsc-single-server)**
+**[recipes/rsc-single-server](recipes/rsc-single-server)**
 
 A simple single server deployment of RStudio Connect that uses the built in user management.
 
