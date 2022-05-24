@@ -1,5 +1,9 @@
 """An AWS Python Pulumi program"""
 
+
+myname = "katie"
+myemail = "katie.masiello@rstudio.com"
+
 import os
 from pathlib import Path
 from textwrap import dedent
@@ -51,7 +55,7 @@ def main():
     # --------------------------------------------------------------------------
     tags = {
         "rs:environment": "development",
-        "rs:owner": "katie.masiello@rstudio.com",
+        "rs:owner": myemail,
         "rs:project": "solutions",
     }
 
@@ -67,7 +71,7 @@ def main():
     # --------------------------------------------------------------------------
     rsw_security_group = ec2.SecurityGroup(
         "rsw-ha-sg",
-        description="Katie security group for Pulumi deployment",
+        description= myname + " security group for Pulumi deployment",
         ingress=[
             {"protocol": "TCP", "from_port": 22, "to_port": 22, 'cidr_blocks': ['0.0.0.0/0'], "description": "SSH"},
             {"protocol": "TCP", "from_port": 8787, "to_port": 8787, 'cidr_blocks': ['0.0.0.0/0'], "description": "RSW"},
@@ -86,13 +90,13 @@ def main():
     # --------------------------------------------------------------------------
     rsw_server_1 = make_rsw_server(
         "1", 
-        tags=tags | {"Name": "katie-rsw-1"},
+        tags=tags | {"Name": myname + "-rsw-1"},
         key_pair=key_pair,
         vpc_group_ids=[rsw_security_group.id]
     )
     rsw_server_2 = make_rsw_server(
         "2", 
-        tags=tags | {"Name": "katie-rsw-2"},
+        tags=tags | {"Name": myname + "-rsw-2"},
         key_pair=key_pair,
         vpc_group_ids=[rsw_security_group.id]
     )
@@ -125,7 +129,7 @@ def main():
         engine="postgres",
         publicly_accessible=True,
         skip_final_snapshot=True,
-        tags=tags | {"Name": "katie-rsw-db"},
+        tags=tags | {"Name": myname + "-rsw-db"},
         vpc_security_group_ids=[rsw_security_group.id]
     )
     pulumi.export("db_port", db.port)
