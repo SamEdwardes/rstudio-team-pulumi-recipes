@@ -51,7 +51,7 @@ def main():
     # --------------------------------------------------------------------------
     tags = {
         "rs:environment": "development",
-        "rs:owner": "sam.edwardes@rstudio.com",
+        "rs:owner": "katie.masiello@rstudio.com",
         "rs:project": "solutions",
     }
 
@@ -67,7 +67,7 @@ def main():
     # --------------------------------------------------------------------------
     rsw_security_group = ec2.SecurityGroup(
         "rsw-ha-sg",
-        description="Sam security group for Pulumi deployment",
+        description="Katie security group for Pulumi deployment",
         ingress=[
             {"protocol": "TCP", "from_port": 22, "to_port": 22, 'cidr_blocks': ['0.0.0.0/0'], "description": "SSH"},
             {"protocol": "TCP", "from_port": 8787, "to_port": 8787, 'cidr_blocks': ['0.0.0.0/0'], "description": "RSW"},
@@ -86,13 +86,13 @@ def main():
     # --------------------------------------------------------------------------
     rsw_server_1 = make_rsw_server(
         "1", 
-        tags=tags | {"Name": "samedwardes-rsw-1"},
+        tags=tags | {"Name": "katie-rsw-1"},
         key_pair=key_pair,
         vpc_group_ids=[rsw_security_group.id]
     )
     rsw_server_2 = make_rsw_server(
         "2", 
-        tags=tags | {"Name": "samedwardes-rsw-1"},
+        tags=tags | {"Name": "katie-rsw-2"},
         key_pair=key_pair,
         vpc_group_ids=[rsw_security_group.id]
     )
@@ -125,7 +125,7 @@ def main():
         engine="postgres",
         publicly_accessible=True,
         skip_final_snapshot=True,
-        tags=tags | {"Name": "samedwardes-rsw-db"},
+        tags=tags | {"Name": "katie-rsw-db"},
         vpc_security_group_ids=[rsw_security_group.id]
     )
     pulumi.export("db_port", db.port)
