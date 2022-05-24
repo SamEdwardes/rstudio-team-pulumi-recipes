@@ -151,7 +151,7 @@ set-load-balancer:
     # /etc/rstudio/load-balancer
 
     balancer=sessions
-    www-host-name={{SERVER_IP_ADDRESS}}:8787
+    # www-host-name={{SERVER_IP_ADDRESS}}:8787
     EOF'
 
 # Settings for /etc/rstudio/database.conf
