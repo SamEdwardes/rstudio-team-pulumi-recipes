@@ -1,8 +1,8 @@
 """An AWS Python Pulumi program"""
 
 
-myname = "katie"
-myemail = "katie.masiello@rstudio.com"
+NAME = "katie"
+EMAIL = "katie.masiello@rstudio.com"
 
 import os
 from pathlib import Path
@@ -14,6 +14,15 @@ import subprocess
 import pulumi
 from pulumi_aws import ec2, efs, rds, ssm, iam
 from pulumi_command import remote
+
+
+# Setup pulumi configuration
+config = pulumi.Config()
+NAME = config.require("name")
+EMAIL = config.require("email")
+AWS_PRIVATE_KEY_PATH = config.require("aws_private_key_path")
+AWS_SSH_KEY_ID = config.require_secret("aws_ssh_key_id")
+RSW_LICENSE = config.require_secret("rsw_license")
 
 
 def get_private_key(file_path: str) -> str:
@@ -55,23 +64,22 @@ def main():
     # --------------------------------------------------------------------------
     tags = {
         "rs:environment": "development",
-        "rs:owner": myemail,
+        "rs:owner": EMAIL,
         "rs:project": "solutions",
     }
 
     # --------------------------------------------------------------------------
     # Set up keys.
     # --------------------------------------------------------------------------
-    print(os.getenv("AWS_SSH_KEY_ID"))
-    key_pair = ec2.get_key_pair(key_pair_id=os.getenv("AWS_SSH_KEY_ID"))
-    private_key = get_private_key(os.getenv("AWS_PRIVATE_KEY_PATH"))
+    key_pair = ec2.get_key_pair(key_pair_id=AWS_SSH_KEY_ID)
+    private_key = get_private_key(AWS_PRIVATE_KEY_PATH)
     
     # --------------------------------------------------------------------------
     # Make security groups
     # --------------------------------------------------------------------------
     rsw_security_group = ec2.SecurityGroup(
         "rsw-ha-sg",
-        description= myname + " security group for Pulumi deployment",
+        description= NAME + " security group for Pulumi deployment",
         ingress=[
             {"protocol": "TCP", "from_port": 22, "to_port": 22, 'cidr_blocks': ['0.0.0.0/0'], "description": "SSH"},
             {"protocol": "TCP", "from_port": 8787, "to_port": 8787, 'cidr_blocks': ['0.0.0.0/0'], "description": "RSW"},
@@ -90,13 +98,13 @@ def main():
     # --------------------------------------------------------------------------
     rsw_server_1 = make_rsw_server(
         "1", 
-        tags=tags | {"Name": myname + "-rsw-1"},
+        tags=tags | {"Name": f"{NAME}-rsw-1"},
         key_pair=key_pair,
         vpc_group_ids=[rsw_security_group.id]
     )
     rsw_server_2 = make_rsw_server(
         "2", 
-        tags=tags | {"Name": myname + "-rsw-2"},
+        tags=tags | {"Name": f"{NAME}-rsw-2"},
         key_pair=key_pair,
         vpc_group_ids=[rsw_security_group.id]
     )
@@ -105,7 +113,7 @@ def main():
     # Create EFS.
     # --------------------------------------------------------------------------
     # Create a new file system.
-    file_system = efs.FileSystem("efs-rsw-ha",tags= tags | {"Name": "rsw-ha-efs"})
+    file_system = efs.FileSystem("efs-rsw-ha", tags=tags | {"Name": f"{NAME}-rsw-ha-efs"})
     pulumi.export("efs_id", file_system.id)
 
     # Create a mount target. Assumes that the servers are on the same subnet id.
@@ -129,7 +137,7 @@ def main():
         engine="postgres",
         publicly_accessible=True,
         skip_final_snapshot=True,
-        tags=tags | {"Name": myname + "-rsw-db"},
+        tags=tags | {"Name": f"{NAME}-rsw-db"},
         vpc_security_group_ids=[rsw_security_group.id]
     )
     pulumi.export("db_port", db.port)
@@ -157,7 +165,7 @@ def main():
                 'echo "export SERVER_IP_ADDRESS=', server.public_ip,         '" > .env;\n',
                 'echo "export DB_ADDRESS=',        db.address,               '" >> .env;\n',
                 'echo "export EFS_ID=',            file_system.id,           '" >> .env;\n',
-                'echo "export RSW_LICENSE=',       os.getenv("RSW_LICENSE"), '" >> .env;',
+                'echo "export RSW_LICENSE=',       RSW_LICENSE, '" >> .env;',
             ), 
             connection=connection, 
             opts=pulumi.ResourceOptions(depends_on=[server, db, file_system])

@@ -114,13 +114,7 @@ add-user name password:
 mount-efs:
     sudo mkdir -p /mnt/efs;
     sudo mount -t efs -o tls {{EFS_ID}}:/ /mnt/efs;
-    #!/bin/bash
-    sudo bash -c 'cat <<EOF > /etc/fstab
-    # mount efs
-    {{EFS_ID}}:/ /etc/fstab efs defaults,_netdev 0 0
-    
-
-    EOF'
+    just set-efs-conf
 
 generate-cookie-key:
     sudo apt-get update
@@ -175,6 +169,13 @@ set-database-conf:
     username=rsw_db_admin
     password=password
     connection-timeout-seconds=12
+    EOF'
+
+set-efs-conf:
+    #!/bin/bash
+    sudo bash -c 'cat <<EOF > /etc/fstab
+    # mount efs
+    {{EFS_ID}}:/ /etc/fstab efs defaults,_netdev 0 0
     EOF'
 
 # Reset all configuration files

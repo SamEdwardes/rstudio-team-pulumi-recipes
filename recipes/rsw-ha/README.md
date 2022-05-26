@@ -18,13 +18,23 @@ python -m pip install --upgrade pip wheel
 pip install -r requirements.txt
 ```
 
-### Step 2: Spin up infra
+### Step 2: Pulumi configuration
+
+Set the following pulumi configuration values:
+
+```bash
+pulumi config set email <XXXX>                 # Will be assigned to `rs:owner` tag in AWS
+pulumi config set name <XXXX>                  # Will be used with the `Name` tag in AWS to easily identify your resources
+pulumi config set aws_private_key_path <XXXX>  # The location of your aws private key, for example /Users/sam/sam-aws-key.pem
+pulumi config set aws_ssh_key_id <XXXX>        # The ID if your SSH - can be founds in the AWS UI
+pulumi config set --secret rsw_license <XXXX>  
+```
+
+### Step 3: Spin up infra
 
 Create all of the infrastructure.
 
 ```bash
-export AWS_SSH_KEY_ID="XXXXXX"
-export AWS_PRIVATE_KEY_PATH="~/XXXX.pem"
 pulumi up
 ```
 
@@ -48,7 +58,7 @@ just ssh 1
 just ssh 2
 ```
 
-Check the status of the load balancer when you are sshed into the ec2 instance:
+Check the status of the load balancer when you are *sshed* into the ec2 instance:
 
 ```bash
 just status-load-balancer
