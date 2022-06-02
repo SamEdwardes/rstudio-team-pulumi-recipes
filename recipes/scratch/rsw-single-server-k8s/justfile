@@ -1,0 +1,20 @@
+LOG_LEVEL := "3"
+LOG_FILE := "_logs.txt"
+
+ssh-echo:
+    @echo "ssh -i ${AWS_PRIVATE_KEY_PATH} -o StrictHostKeyChecking=no ubuntu@$(pulumi stack output rsw_public_dns)"
+
+ssh:
+    ssh -i ${AWS_PRIVATE_KEY_PATH} -o StrictHostKeyChecking=no ubuntu@$(pulumi stack output rsw_public_dns)
+
+up:
+    pulumi up -y --logtostderr -v={{LOG_LEVEL}} 2> {{LOG_FILE}}
+
+destroy:
+    pulumi destroy -y --logtostderr -v={{LOG_LEVEL}} 2> {{LOG_FILE}}
+
+open:
+    open http://$(pulumi stack output rsw_public_ip):8787
+
+ip:
+    echo $(pulumi stack output rsw_public_ip)
