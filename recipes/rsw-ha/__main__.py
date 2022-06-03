@@ -1,9 +1,6 @@
 """An AWS Python Pulumi program"""
 
 
-NAME = "katie"
-EMAIL = "katie.masiello@rstudio.com"
-
 import os
 from pathlib import Path
 from textwrap import dedent
