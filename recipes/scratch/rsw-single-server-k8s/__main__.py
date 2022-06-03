@@ -7,7 +7,7 @@ from typing import Dict, Optional, List
 from dataclasses import dataclass, field
 
 import pulumi
-from pulumi_aws import ec2, efs, rds, ssm, iam
+from pulumi_aws import ec2, efs
 from pulumi_command import remote
 
 # Setup pulumi configuration
@@ -52,8 +52,12 @@ def main():
     # --------------------------------------------------------------------------
     # Make security groups
     # --------------------------------------------------------------------------
+    default_vpc = ec2.Vpc.get("default-vpc", id="vpc-0e82efd7829d492b9")
+    default_security_group_id = default_vpc.default_security_group_id
+
     rsw_security_group = ec2.SecurityGroup(
         "rsw-ha-sg",
+        vpc_id=default_vpc.id,
         description= CONFIG_VALUES.name + " security group for Pulumi deployment",
         ingress=[
             {"protocol": "TCP", "from_port": 22, "to_port": 22, 'cidr_blocks': ['0.0.0.0/0'], "description": "SSH"},
@@ -71,13 +75,18 @@ def main():
     # --------------------------------------------------------------------------
     # Stand up the servers
     # --------------------------------------------------------------------------
+    amis = {
+        "us-east-1": "ami-0c4f7023847b90238",  # Ubuntu Server 20.04 LTS (HVM), SSD Volume Type
+        "us-east-2": "ami-0fb653ca2d3203ac1",  # Ubuntu Server 20.04 LTS (HVM), SSD Volume Type
+    }
     rsw_server = ec2.Instance(
         f"rstudio-workbench-server",
         instance_type="t3.medium",
         vpc_security_group_ids=[rsw_security_group.id],
-        ami="ami-0fb653ca2d3203ac1",  # Ubuntu Server 20.04 LTS (HVM), SSD Volume Type
+        ami=amis["us-east-1"],
         tags=TAGS | {"Name": f"{CONFIG_VALUES.name}-rsw-server"},
-        key_name=key_pair.key_name
+        key_name=key_pair.key_name,
+        subnet_id="subnet-0a82ec56935b0c5f7"
     )
 
     # Export final pulumi variables.
@@ -89,7 +98,10 @@ def main():
     # Create EFS.
     # --------------------------------------------------------------------------
     # Create a new file system.
-    file_system = efs.FileSystem("efs-rsw-ha", tags=TAGS | {"Name": f"{CONFIG_VALUES.name}-rsw-ha-efs"})
+    file_system = efs.FileSystem(
+        "efs-rsw-ha",
+        tags=TAGS | {"Name": f"{CONFIG_VALUES.name}-rsw-ha-efs"}
+    )
     pulumi.export("efs_id", file_system.id)
 
     # Create a mount target. Assumes that the servers are on the same subnet id.
@@ -97,7 +109,7 @@ def main():
         f"mount-target-rsw",
         file_system_id=file_system.id,
         subnet_id=rsw_server.subnet_id,
-        security_groups=[rsw_security_group.id]
+        security_groups=[rsw_security_group.id, default_security_group_id]
     )
 
     # Mount the subnet ids related to the k8s cluster.
@@ -121,13 +133,33 @@ def main():
     command_set_env = remote.Command(
         f"server-set-env--", 
         create=pulumi.Output.concat(
-            f'''echo "export SERVER_IP_ADDRESS=''', rsw_server.public_ip, '''" > .env;\n''',
-            f'''echo "export EFS_ID=''', file_system.id, '''" >> .env;\n''',
-            f'''echo "export KUBERNETES_API_ENDPOINT=''', CONFIG_VALUES.kubernetes_api_endpoint, '''" >> .env;\n''',
-            f'''echo "export KUBERNETES_CLUSTER_TOKEN=''', CONFIG_VALUES.kubernetes_cluster_token, '''" >> .env;\n''',
-            f'''echo "export KUBERNETES_CERTIFICATE_AUTHORITY=''', CONFIG_VALUES.kubernetes_certificate_authority, '''" >> .env;\n''',
-            f'''echo "export NFS_IP_ADDRESS=''', mount_target.ip_address, '''" >> .env;\n''',
-            f'''echo "export RSW_LICENSE=''', CONFIG_VALUES.rsw_license, '''" >> .env;''',
+            f'''echo "export SERVER_IP_ADDRESS=''', 
+            rsw_server.public_ip,
+            '''" > .env;\n''',
+
+            f'''echo "export EFS_ID=''', 
+            file_system.id,
+            '''" >> .env;\n''',
+
+            f'''echo "export KUBERNETES_API_ENDPOINT=''', 
+            CONFIG_VALUES.kubernetes_api_endpoint,
+            '''" >> .env;\n''',
+
+            f'''echo "export KUBERNETES_CLUSTER_TOKEN=''', 
+            CONFIG_VALUES.kubernetes_cluster_token,
+            '''" >> .env;\n''',
+
+            f'''echo "export KUBERNETES_CERTIFICATE_AUTHORITY=''', 
+            CONFIG_VALUES.kubernetes_certificate_authority,
+            '''" >> .env;\n''',
+
+            f'''echo "export NFS_IP_ADDRESS=''', 
+            mount_target.ip_address,
+            '''" >> .env;\n''',
+
+            f'''echo "export RSW_LICENSE=''', 
+            CONFIG_VALUES.rsw_license,
+            '''" >> .env;''',
         ), 
         connection=connection, 
         opts=pulumi.ResourceOptions(depends_on=[rsw_server, file_system])
@@ -139,7 +171,7 @@ def main():
             """curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/bin;""",
             """echo 'export PATH="$PATH:$HOME/bin"' >> ~/.bashrc;"""
         ]),
-        connection=connection, 
+        connection=connection,
         opts=pulumi.ResourceOptions(depends_on=[rsw_server])
     )
 
@@ -153,7 +185,6 @@ def main():
     
     # command_build_rsw = remote.Command(
     #     f"server-build-rsw", 
-    #     # create="alias just='/home/ubuntu/bin/just'; just build-rsw", 
     #     create="""export PATH="$PATH:$HOME/bin"; just build-rsw""", 
     #     connection=connection, 
     #     opts=pulumi.ResourceOptions(depends_on=[command_set_env, command_install_justfile, command_copy_justfile])

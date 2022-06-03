@@ -16,12 +16,12 @@ NFS_IP_ADDRESS := env_var("NFS_IP_ADDRESS")
 build-rsw: 
     # Basic setup
     just install-linux-tools 
-    
+
     # Set up shared drive
     just install-efs-utils
     just mount-efs
     sudo mkdir -p /mnt/efs/rstudio-server/shared-storage
-    
+
     # Add some test users
     just add-user sam password
     just add-user jake password
@@ -45,31 +45,6 @@ build-rsw:
     sudo rstudio-launcher restart
 
 # -----------------------------------------------------------------------------
-# Helpers
-# -----------------------------------------------------------------------------
-
-restart:
-    sudo rstudio-server restart
-
-restart-launcher:
-    sudo rstudio-launcher restart
-
-status:
-    sudo rstudio-server status
-
-logs:
-    sudo tail /var/log/rstudio/rstudio-server/rserver.log
-
-edit:
-    sudo vim /etc/rstudio/rserver.conf
-
-edit-database:
-    sudo vim /etc/rstudio/database.conf
-
-edit-load-balancer:
-    sudo vim /etc/rstudio/load-balancer
-
-# -----------------------------------------------------------------------------
 # Install
 # -----------------------------------------------------------------------------
 
@@ -87,7 +62,7 @@ install-rsw:
 
 install-r r_version='4.1.2':
     curl -O https://cdn.rstudio.com/r/ubuntu-2004/pkgs/r-{{r_version}}_1_amd64.deb
-    sudo gdebi r-{{r_version}}_1_amd64.deb -n
+    sudo gdebi -n r-{{r_version}}_1_amd64.deb
 
 install-efs-utils:
     #!/bin/bash
@@ -183,6 +158,7 @@ set-launcher-kubernetes-conf:
     api-url={{KUBERNETES_API_ENDPOINT}}
     auth-token={{KUBERNETES_CLUSTER_TOKEN}}
     certificate-authority={{KUBERNETES_CERTIFICATE_AUTHORITY}}
+    kubernetes-namespace=rstudio-samedwardes
     EOF'
 
 set-launcher-mounts:
@@ -190,7 +166,7 @@ set-launcher-mounts:
     sudo bash -c 'cat <<EOF > /etc/rstudio/launcher-mounts
     Host: {{NFS_IP_ADDRESS}}
     Path: /home/{USER}
-    MountPath: /home/{USER}
+    MountPath: /mnt/efs/home/{USER}
     ReadOnly: false
     Cluster: Kubernetes
     EOF'
@@ -201,3 +177,28 @@ set-fstab:
     # mount efs
     {{EFS_ID}}:/ /etc/fstab efs defaults,_netdev 0 0
     EOF'
+
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+
+restart:
+    sudo rstudio-server restart
+
+restart-launcher:
+    sudo rstudio-launcher restart
+
+status:
+    sudo rstudio-server status
+
+logs:
+    sudo tail /var/log/rstudio/rstudio-server/rserver.log
+
+edit:
+    sudo vim /etc/rstudio/rserver.conf
+
+edit-database:
+    sudo vim /etc/rstudio/database.conf
+
+edit-load-balancer:
+    sudo vim /etc/rstudio/load-balancer
