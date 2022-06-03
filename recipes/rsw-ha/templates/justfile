@@ -173,7 +173,7 @@ set-database-conf:
 
 set-efs-conf:
     #!/bin/bash
-    sudo bash -c 'cat <<EOF > /etc/fstab
+    sudo bash -c 'cat <<EOF >> /etc/fstab
     # mount efs
     {{EFS_ID}}:/ /mnt/efs efs defaults,_netdev 0 0
     EOF'
