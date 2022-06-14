@@ -114,6 +114,7 @@ add-user name password:
 mount-efs:
     sudo mkdir -p /mnt/efs;
     sudo mount -t efs -o tls {{EFS_ID}}:/ /mnt/efs;
+    just set-efs-conf
 
 generate-cookie-key:
     sudo apt-get update
@@ -138,6 +139,7 @@ set-rserver-conf:
     www-port=8787
     admin-enabled=1
     admin-group=sam
+    server-health-check-enabled=1
 
     # Share storage
     server-shared-storage-path=/mnt/efs/rstudio-server/shared-storage
@@ -151,7 +153,7 @@ set-load-balancer:
     # /etc/rstudio/load-balancer
 
     balancer=sessions
-    www-host-name={{SERVER_IP_ADDRESS}}:8787
+    # www-host-name={{SERVER_IP_ADDRESS}}:8787
     EOF'
 
 # Settings for /etc/rstudio/database.conf
@@ -167,6 +169,13 @@ set-database-conf:
     username=rsw_db_admin
     password=password
     connection-timeout-seconds=12
+    EOF'
+
+set-efs-conf:
+    #!/bin/bash
+    sudo bash -c 'cat <<EOF >> /etc/fstab
+    # mount efs
+    {{EFS_ID}}:/ /mnt/efs efs defaults,_netdev 0 0
     EOF'
 
 # Reset all configuration files
