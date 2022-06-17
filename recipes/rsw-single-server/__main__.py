@@ -55,9 +55,8 @@ def main():
         ingress=[
             {"protocol": "TCP", "from_port": 22, "to_port": 22, 'cidr_blocks': ['0.0.0.0/0'], "description": "SSH"},
             {"protocol": "TCP", "from_port": 8787, "to_port": 8787, 'cidr_blocks': ['0.0.0.0/0'], "description": "RSW"},
-            {"protocol": "TCP", "from_port": 2049, "to_port": 2049, 'cidr_blocks': ['0.0.0.0/0'], "description": "NFS"},
+            {"protocol": "TCP", "from_port": 443, "to_port": 443, 'cidr_blocks': ['0.0.0.0/0'], "description": "RSW"},
             {"protocol": "TCP", "from_port": 80, "to_port": 80, 'cidr_blocks': ['0.0.0.0/0'], "description": "HTTP"},
-            {"protocol": "TCP", "from_port": 5432, "to_port": 5432, 'cidr_blocks': ['0.0.0.0/0'], "description": "POSTGRESQL"},
         ],
         egress=[
             {"protocol": "All", "from_port": -1, "to_port": -1, 'cidr_blocks': ['0.0.0.0/0'], "description": "Allow all outbound traffic"},
@@ -101,6 +100,10 @@ def main():
             f'''echo "export SERVER_IP_ADDRESS=''', 
             rsw_server.public_ip,
             '''" > .env;\n''',
+            
+            f'''echo "export SERVER_PUBLIC_DNS=''', 
+            rsw_server.public_dns,
+            '''" >> .env;\n''',
 
             f'''echo "export RSW_LICENSE=''', 
             CONFIG_VALUES.rsw_license,
