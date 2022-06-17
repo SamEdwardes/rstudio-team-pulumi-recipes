@@ -2,12 +2,14 @@
 
 ![](infra.drawio.png)
 
+⚠️ This deployment uses a self signed cert. It will not open in Google Chrome. It will open in FireFox after you accept the security warnings.
+
 ## Usage
 
 There are two primary files:
 
 - `__main__.py`: contains the python code that will stand up the AWS resources.
-- `templates/justfile`: contains the commands required to install RSW and the required dependencies. This file will be copied to each ec2 instance so that it can be executed on the server.
+- `server-side-justfile`: contains the commands required to install RSW and the required dependencies. This file will be copied to each ec2 instance so that it can be executed on the server.
 
 ### Step 1: Create new virtual environment
 
@@ -19,6 +21,12 @@ pip install -r requirements.txt
 ```
 
 ### Step 2: Pulumi configuration
+
+Select your pulumi stack.
+
+```bash
+pulumi stack select dev
+```
 
 Set the following pulumi configuration values:
 
@@ -40,7 +48,7 @@ pulumi up
 
 ### Step 3: Validate that RSW is working
 
-Visit RSW in your browser:
+Visit RSW in your browser (use FireFox instead of Chrome):
 
 ```
 just open
@@ -51,15 +59,5 @@ Login and start some new sessions.
 You can also ssh into the ec2 instances for any debugging.
 
 ```bash
-just ssh 1
-```
-
-```bash
-just ssh 2
-```
-
-Check the status of the load balancer when you are *sshed* into the ec2 instance:
-
-```bash
-just status-load-balancer
+just ssh
 ```

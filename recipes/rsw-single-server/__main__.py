@@ -20,7 +20,7 @@ class ConfigValues:
     aws_private_key_path: str = field(default_factory=lambda: config.require("aws_private_key_path"))
     aws_ssh_key_id: str = field(default_factory=lambda: config.require("aws_ssh_key_id"))
     rsw_license: str = field(default_factory=lambda: config.require("rsw_license"))
-
+    
 
 CONFIG_VALUES = ConfigValues()
 TAGS = {
@@ -55,7 +55,7 @@ def main():
         ingress=[
             {"protocol": "TCP", "from_port": 22, "to_port": 22, 'cidr_blocks': ['0.0.0.0/0'], "description": "SSH"},
             {"protocol": "TCP", "from_port": 8787, "to_port": 8787, 'cidr_blocks': ['0.0.0.0/0'], "description": "RSW"},
-            {"protocol": "TCP", "from_port": 443, "to_port": 443, 'cidr_blocks': ['0.0.0.0/0'], "description": "RSW"},
+            {"protocol": "TCP", "from_port": 443, "to_port": 443, 'cidr_blocks': ['0.0.0.0/0'], "description": "HTTPS"},
             {"protocol": "TCP", "from_port": 80, "to_port": 80, 'cidr_blocks': ['0.0.0.0/0'], "description": "HTTP"},
         ],
         egress=[
@@ -67,15 +67,14 @@ def main():
     # --------------------------------------------------------------------------
     # Stand up the servers
     # --------------------------------------------------------------------------
-    amis = {
-        "us-east-1": "ami-0c4f7023847b90238",  # Ubuntu Server 20.04 LTS (HVM), SSD Volume Type
-        "us-east-2": "ami-0fb653ca2d3203ac1",  # Ubuntu Server 20.04 LTS (HVM), SSD Volume Type
-    }
+    # Ubuntu Server 20.04 LTS (HVM), SSD Volume Type for us-east-2
+    ami_id = "ami-0fb653ca2d3203ac1"
+
     rsw_server = ec2.Instance(
         f"rstudio-workbench-server",
         instance_type="t3.medium",
         vpc_security_group_ids=[security_group.id],
-        ami=amis["us-east-2"],
+        ami=ami_id,                 
         tags=TAGS | {"Name": f"{CONFIG_VALUES.name}-rsw-server"},
         key_name=key_pair.key_name
     )
@@ -125,17 +124,17 @@ def main():
 
     command_copy_justfile = remote.CopyFile(
         f"server-copy-justfile",  
-        local_path="templates/server-side-justfile", 
+        local_path="server-side-justfile", 
         remote_path='justfile', 
         connection=connection, 
         opts=pulumi.ResourceOptions(depends_on=[rsw_server])
     )
     
-    # command_build_rsw = remote.Command(
-    #     f"server-build-rsw", 
-    #     create="""export PATH="$PATH:$HOME/bin"; just build-rsw""", 
-    #     connection=connection, 
-    #     opts=pulumi.ResourceOptions(depends_on=[command_set_env, command_install_justfile, command_copy_justfile])
-    # )
+    command_build_rsw = remote.Command(
+        f"server-build-rsw", 
+        create="""export PATH="$PATH:$HOME/bin"; just build-rsw""", 
+        connection=connection, 
+        opts=pulumi.ResourceOptions(depends_on=[command_set_env, command_install_justfile, command_copy_justfile])
+    )
 
 main()

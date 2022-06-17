@@ -14,7 +14,7 @@ destroy:
     pulumi destroy -y --logtostderr -v={{LOG_LEVEL}} 2> {{LOG_FILE}}
 
 open:
-    open http://$(pulumi stack output rsw_public_ip):8787
+    open https://$(pulumi stack output rsw_public_dns)
 
-ip:
+ip-echo:
     echo $(pulumi stack output rsw_public_ip)
