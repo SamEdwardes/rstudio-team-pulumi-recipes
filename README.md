@@ -39,7 +39,24 @@ export AWS_SECRET_ACCESS_KEY=<YOUR_SECRET_ACCESS_KEY>
 
 The recipes below have been tested and are confirmed to work. Additional recipes can be found in [recipes/wip/](./recipes/wip/). These recipes are still a work in progress.
 
-### (1) High availability RStudio Workbench
+### Rstudio Workbench
+
+#### Single Server Workbench with code-server
+
+**[recipes/rsw-single-server](recipes/rsw-single-server)**
+
+A single server deployment of RStudio Workbench with code-server installed.
+
+⚠️ This deployment uses a self signed cert. It will not open in Google Chrome. It will open in FireFox after you accept the security warnings.
+
+<details>
+<summary>Infrastructure diagram</summary>
+
+![](recipes/rsw-single-server/infra.drawio.png)
+
+</details>
+
+#### High availability RStudio Workbench
 
 **[recipes/rsw-ha](recipes/rsw-ha)**
 
@@ -52,7 +69,9 @@ A high availability deployment of RStudio Workbench with no launcher (e.g. R onl
 
 </details>
 
-### (2) Single Server RStudio Connect
+### Rstudio Connect
+
+#### Single Server RStudio Connect
 
 **[recipes/rsc-single-server](recipes/rsc-single-server)**
 

@@ -15,8 +15,8 @@ PYTHON_VERSION := env_var_or_default("PYTHON_VERSION", "3.10.4")
 build-rsw: 
     # Basic setup
     sudo apt-get update
-    sleep 3
-    just install-linux-tools 
+    sudo apt-get update
+    sudo apt-get install -y gdebi-core
 
     # Add some test users
     just add-user sam password
@@ -49,11 +49,6 @@ build-rsw:
 # -----------------------------------------------------------------------------
 # Install
 # -----------------------------------------------------------------------------
-
-install-linux-tools:
-    sudo apt-get install -y tree
-    sudo apt-get install -y bat
-    sudo apt-get install -y gdebi-core
 
 install-rsw:
     curl -O https://download2.rstudio.org/server/bionic/amd64/rstudio-workbench-2022.02.3-492.pro3-amd64.deb

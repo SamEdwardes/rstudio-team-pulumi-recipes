@@ -1,13 +1,8 @@
-"""An AWS Python Pulumi program"""
-
-import os
 from pathlib import Path
-from textwrap import dedent
-from typing import Dict, Optional, List
 from dataclasses import dataclass, field
 
 import pulumi
-from pulumi_aws import ec2, efs
+from pulumi_aws import ec2
 from pulumi_command import remote
 
 # Setup pulumi configuration
@@ -20,7 +15,7 @@ class ConfigValues:
     aws_private_key_path: str = field(default_factory=lambda: config.require("aws_private_key_path"))
     aws_ssh_key_id: str = field(default_factory=lambda: config.require("aws_ssh_key_id"))
     rsw_license: str = field(default_factory=lambda: config.require("rsw_license"))
-    
+
 
 CONFIG_VALUES = ConfigValues()
 TAGS = {
@@ -129,12 +124,12 @@ def main():
         connection=connection, 
         opts=pulumi.ResourceOptions(depends_on=[rsw_server])
     )
-    
+
     command_build_rsw = remote.Command(
         f"server-build-rsw", 
         create="""export PATH="$PATH:$HOME/bin"; just build-rsw""", 
         connection=connection, 
-        opts=pulumi.ResourceOptions(depends_on=[command_set_env, command_install_justfile, command_copy_justfile])
+        opts=pulumi.ResourceOptions(depends_on=[command_copy_justfile])
     )
 
 main()
