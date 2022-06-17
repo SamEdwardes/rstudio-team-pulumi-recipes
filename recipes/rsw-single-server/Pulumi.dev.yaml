@@ -1,0 +1,7 @@
+config:
+  rsw-single-server:aws_private_key_path: /Users/samedwardes/samedwardes-us-east-2.pem
+  rsw-single-server:aws_ssh_key_id: key-0ab5cbd80f66192ed
+  rsw-single-server:email: sam.edwardes@rstudio.com
+  rsw-single-server:name: samedwardes
+  rsw-single-server:rsw_license:
+    secure: AAABADs+w+4+hxbFap+V4gnVGS73bhRNuK2STZoid3G5lVgQ4OMrN1suR4iVqfa0HSmMgu877z378rKKWcwmQyrj

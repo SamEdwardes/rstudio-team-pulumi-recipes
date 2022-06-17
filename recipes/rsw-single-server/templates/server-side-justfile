@@ -1,0 +1,237 @@
+set dotenv-load
+
+SERVER_IP_ADDRESS := env_var("SERVER_IP_ADDRESS")
+RSW_LICENSE := env_var("RSW_LICENSE")
+
+R_VERSION := env_var_or_default("R_VERSION", "4.1.2")
+PYTHON_VERSION := env_var_or_default("PYTHON_VERSION", "3.10.4")
+
+# -----------------------------------------------------------------------------
+# Build RSW
+# -----------------------------------------------------------------------------
+
+# Install RStudio workbench and all of the dependencies
+build-rsw: 
+    # Basic setup
+    sudo apt-get update
+    sleep 3
+    just install-linux-tools 
+
+    # Add some test users
+    just add-user sam password
+    just add-user jake password
+    just add-user olivia password
+
+    # Install RSW and required dependencies
+    just install-r 
+    just symlink-r
+    just install-python
+    just install-rsw-daily
+    just install-vscode
+    sudo cp -r /etc/rstudio /etc/rstudio-original-conf-files
+
+    # Set up config files
+    just set-rserver-conf
+    just set-launcher-conf
+    just set-vscode-extensions-conf
+
+    # Restart
+    sudo rstudio-server restart
+    sudo rstudio-launcher restart
+
+# -----------------------------------------------------------------------------
+# Install
+# -----------------------------------------------------------------------------
+
+install-linux-tools:
+    sudo apt-get install -y tree
+    sudo apt-get install -y bat
+    sudo apt-get install -y gdebi-core
+    sudo apt-get install -y nginx
+
+install-rsw:
+    curl -O https://download2.rstudio.org/server/bionic/amd64/rstudio-workbench-2022.02.3-492.pro3-amd64.deb
+    sudo gdebi -n rstudio-workbench-2022.02.3-492.pro3-amd64.deb
+    sudo rstudio-server license-manager activate $RSW_LICENSE
+
+install-rsw-daily:
+    curl -O https://s3.amazonaws.com/rstudio-ide-build/server/bionic/amd64/rstudio-workbench-2022.06.0-daily-529.pro3-amd64.deb
+    sudo gdebi -n rstudio-workbench-2022.06.0-daily-529.pro3-amd64.deb
+    sudo rstudio-server license-manager activate $RSW_LICENSE
+
+install-r:
+    curl -O https://cdn.rstudio.com/r/ubuntu-2004/pkgs/r-{{R_VERSION}}_1_amd64.deb
+    sudo gdebi -n r-{{R_VERSION}}_1_amd64.deb
+
+install-python:
+    # https://docs.rstudio.com/resources/install-python/
+    # install python
+    sudo mkdir /opt/python
+    sudo curl -fsSL -o /opt/python/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh 
+    sudo chmod 755 /opt/python/miniconda.sh
+    sudo /opt/python/miniconda.sh -b -p /opt/python/miniconda
+    sudo /opt/python/miniconda/bin/conda create --quiet --yes --prefix /opt/python/{{PYTHON_VERSION}} --channel conda-forge python={{PYTHON_VERSION}}
+    sudo /opt/python/{{PYTHON_VERSION}}/bin/pip install --upgrade pip setuptools wheel
+    # make jupyter kernel
+    sudo /opt/python/{{PYTHON_VERSION}}/bin/pip install ipykernel
+    sudo /opt/python/{{PYTHON_VERSION}}/bin/python -m ipykernel install --name py{{PYTHON_VERSION}} --display-name "Python {{PYTHON_VERSION}}"
+
+install-vscode:
+    sudo rstudio-server install-vs-code /opt/code-server
+
+# -----------------------------------------------------------------------------
+# Linux mgmt
+# -----------------------------------------------------------------------------
+
+add-user name password:
+    #!/bin/bash
+    sudo useradd --create-home --home-dir /home/{{name}} -s /bin/bash {{name}};
+    echo -e '{{password}}\n{{password}}' | sudo passwd {{name}};
+
+symlink-r:
+    sudo ln -s /opt/R/{{R_VERSION}}/bin/R /usr/local/bin/R
+    sudo ln -s /opt/R/{{R_VERSION}}/bin/Rscript /usr/local/bin/Rscript
+
+get-ssl-cert:
+    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/nginx.key -out /etc/ssl/nginx.crt
+    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt 
+
+# -----------------------------------------------------------------------------
+# Configuration files
+# -----------------------------------------------------------------------------
+
+set-rserver-conf:
+    #!/bin/bash
+    sudo bash -c 'cat <<EOF > /etc/rstudio/rserver.conf
+    www-port=8787
+    admin-enabled=1
+    admin-group=sam
+    server-health-check-enabled=1
+
+    # Launcher Config
+    launcher-address=127.0.0.1
+    launcher-port=5559
+    launcher-sessions-enabled=1
+    launcher-default-cluster=Local
+    launcher-sessions-callback-address=http://127.0.0.1:8787
+    EOF'
+
+set-launcher-conf:
+    #!/bin/bash
+    sudo bash -c 'cat <<EOF > /etc/rstudio/launcher.conf    
+    [server]
+    address=127.0.0.1
+    port=5559
+    server-user=rstudio-server
+    authorization-enabled=1
+    thread-pool-size=4
+    enable-debug-logging=1
+    admin-group=rstudio-server
+
+    [cluster]
+    name=Local
+    type=Local
+    exe=/usr/lib/rstudio-server/bin/rstudio-local-launcher
+    EOF'
+
+set-vscode-extensions-conf:
+    #!/bin/bash
+    sudo bash -c 'cat <<EOF > /etc/rstudio/vscode.extensions.conf  
+    quarto.quarto
+    Ikuyadeu.r
+    ms-python.python
+    EOF'
+
+# -----------------------------------------------------------------------------
+# Nginx and SSL
+# -----------------------------------------------------------------------------
+
+set-nginx-snippet-self-signed-conf:
+    #!/bin/bash
+    sudo bash -c 'cat <<EOF > /etc/nginx/snippets/self-signed.conf
+    ssl_certificate /etc/ssl/nginx.crt; ssl_certificate_key /etc/ssl/nginx.key; 
+    EOF'
+
+set-nginx-snippet-ssl-params-conf:
+    #!/bin/bash
+    sudo bash -c 'cat <<EOF > /etc/nginx/snippets/ssl-params.conf
+    ssl_certificate /etc/ssl/nginx.crt; ssl_certificate_key /etc/ssl/nginx.key; 
+    EOF'
+
+set-nginx-conf:
+    #!/bin/bash
+    sudo bash -c 'cat <<EOF > /etc/rstudio/vscode.extensions.conf 
+    user www-data;
+    worker_processes auto;
+    pid /run/nginx.pid;
+    include /etc/nginx/modules-enabled/*.conf;
+
+    events {
+        worker_connections 768;
+    }
+
+    http {
+
+    # Support proxying of web-socket connections
+        map $http_upgrade $connection_upgrade {
+            default upgrade;
+            ''      close;
+        }
+    
+        server {
+            listen 80;
+            server_name {{SERVER_IP_ADDRESS}} www.{{SERVER_IP_ADDRESS}};
+
+            # -------------------------------------------------------------------------
+            # RSW
+            # -------------------------------------------------------------------------
+            location /rstudio/ {
+                # Needed only for a custom path prefix of /rstudio
+                rewrite ^/rstudio(.*)$ /$1 break;
+
+                # Use http here when ssl-enabled=0 is set in rserver.conf
+                proxy_pass http://{{SERVER_IP_ADDRESS}}:8787;
+
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection $connection_upgrade;
+                proxy_read_timeout 20d;
+
+                # Not needed if www-root-path is set in rserver.conf
+                proxy_set_header X-RStudio-Root-Path /rstudio;
+
+                # Optionally, use an explicit hostname and omit the port if using 80/443
+                proxy_set_header Host $host:$server_port;
+            }
+        }
+    }
+    EOF'
+
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+
+restart:
+    sudo rstudio-server restart
+    sudo rstudio-launcher restart
+
+restart-rstudio-server:
+    sudo rstudio-server restart
+
+restart-launcher:
+    sudo rstudio-launcher restart
+
+status:
+    sudo rstudio-server status
+
+logs:
+    sudo tail /var/log/rstudio/rstudio-server/rserver.log
+
+edit:
+    sudo vim /etc/rstudio/rserver.conf
+
+edit-database:
+    sudo vim /etc/rstudio/database.conf
+
+edit-load-balancer:
+    sudo vim /etc/rstudio/load-balancer
