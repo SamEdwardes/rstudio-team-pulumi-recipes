@@ -35,7 +35,8 @@ pulumi config set email <XXXX>                 # Will be assigned to `rs:owner` 
 pulumi config set name <XXXX>                  # Will be used with the `Name` tag in AWS to easily identify your resources
 pulumi config set aws_private_key_path <XXXX>  # The location of your aws private key, for example /Users/sam/sam-aws-key.pem
 pulumi config set aws_ssh_key_id <XXXX>        # The ID if your SSH - can be founds in the AWS UI
-pulumi config set --secret rsw_license <XXXX>  
+pulumi config set --secret rsw_license <XXXX>
+pulumi config set daily false                  # Should be `true` or `false`. If `true` will use the daily build.
 ```
 
 ### Step 3: Spin up infra

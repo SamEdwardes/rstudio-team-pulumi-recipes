@@ -3,6 +3,8 @@ set dotenv-load
 SERVER_IP_ADDRESS := env_var("SERVER_IP_ADDRESS")
 SERVER_PUBLIC_DNS := env_var("SERVER_PUBLIC_DNS")
 RSW_LICENSE := env_var("RSW_LICENSE")
+RSW_URL := env_var("RSW_URL")
+RSW_FILENAME := env_var("RSW_FILENAME")
 
 R_VERSION := env_var_or_default("R_VERSION", "4.1.2")
 PYTHON_VERSION := env_var_or_default("PYTHON_VERSION", "3.10.4")
@@ -27,7 +29,7 @@ build-rsw:
     just install-r 
     just symlink-r
     just install-python
-    just install-rsw-daily
+    just install-rsw
     just install-vscode
     sudo cp -r /etc/rstudio /etc/rstudio-original-conf-files
 
@@ -51,13 +53,8 @@ build-rsw:
 # -----------------------------------------------------------------------------
 
 install-rsw:
-    curl -O https://download2.rstudio.org/server/bionic/amd64/rstudio-workbench-2022.02.3-492.pro3-amd64.deb
-    sudo gdebi -n rstudio-workbench-2022.02.3-492.pro3-amd64.deb
-    sudo rstudio-server license-manager activate $RSW_LICENSE
-
-install-rsw-daily:
-    curl -O https://s3.amazonaws.com/rstudio-ide-build/server/bionic/amd64/rstudio-workbench-2022.06.0-daily-529.pro3-amd64.deb
-    sudo gdebi -n rstudio-workbench-2022.06.0-daily-529.pro3-amd64.deb
+    curl -O {{RSW_URL}}
+    sudo gdebi -n {{RSW_FILENAME}}
     sudo rstudio-server license-manager activate $RSW_LICENSE
 
 install-r:

@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 import pulumi
 from pulumi_aws import ec2
 from pulumi_command import remote
+import requests
+from rich import print
 
 # Setup pulumi configuration
 config = pulumi.Config()
@@ -15,6 +17,7 @@ class ConfigValues:
     aws_private_key_path: str = field(default_factory=lambda: config.require("aws_private_key_path"))
     aws_ssh_key_id: str = field(default_factory=lambda: config.require("aws_ssh_key_id"))
     rsw_license: str = field(default_factory=lambda: config.require("rsw_license"))
+    daily: bool = field(default_factory=lambda: config.require("daily").lower() in ("yes", "true", "t", "1"))
 
 
 CONFIG_VALUES = ConfigValues()
@@ -33,6 +36,14 @@ def get_private_key(file_path: str) -> str:
         private_key = f.read()
     return private_key
 
+
+def get_latest_build() -> str:
+    url = "https://dailies.rstudio.com/rstudio/latest/index.json"
+    r = requests.get(url)
+    data = r.json()
+    link = data["products"]["workbench"]["platforms"]["bionic"]["link"]
+    filename = data["products"]["workbench"]["platforms"]["bionic"]["filename"]
+    return (link, filename)
 
 def main():
     # --------------------------------------------------------------------------
@@ -88,6 +99,12 @@ def main():
         private_key=private_key
     )
 
+    if CONFIG_VALUES.daily:
+        rsw_url, rsw_filename = get_latest_build()
+    else:
+        rsw_url = "https://download2.rstudio.org/server/bionic/amd64/rstudio-workbench-2022.02.3-492.pro3-amd64.deb"
+        rsw_filename = "rstudio-workbench-2022.02.3-492.pro3-amd64.deb"
+
     command_set_env = remote.Command(
         f"server-set-env", 
         create=pulumi.Output.concat(
@@ -101,6 +118,14 @@ def main():
 
             f'''echo "export RSW_LICENSE=''', 
             CONFIG_VALUES.rsw_license,
+            '''" >> .env;''',
+            
+            f'''echo "export RSW_URL=''', 
+            rsw_url,
+            '''" >> .env;''',
+            
+            f'''echo "export RSW_FILENAME=''', 
+            rsw_filename,
             '''" >> .env;''',
         ), 
         connection=connection, 
