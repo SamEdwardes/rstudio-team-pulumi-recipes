@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import pulumi
 from pulumi_aws import ec2
 from pulumi_command import remote
+import pulumi_tls as tls
 import requests
 from rich import print
 
@@ -91,6 +92,33 @@ def main():
     pulumi.export(f'rsw_subnet_id', rsw_server.subnet_id)
   
     # --------------------------------------------------------------------------
+    # Create a self signed cert
+    # --------------------------------------------------------------------------
+    # Create a new private CA
+    ca_private_key = tls.PrivateKey("ca-private-key",
+        algorithm="ECDSA",
+        ecdsa_curve="P384"
+    )
+
+    # Create a self signed cert
+    ca_cert = tls.SelfSignedCert(
+        "ca-self-signed-cert",
+        private_key_pem=ca_private_key.private_key_pem,
+        is_ca_certificate=True,
+        validity_period_hours=8760,
+        allowed_uses=[
+            "key_encipherment",
+            "digital_signature",
+            "cert_signing"
+        ],
+        dns_names=[rsw_server.public_dns],
+        subject=tls.SelfSignedCertSubjectArgs(
+            common_name="private-ca",
+            organization="RStudio"
+        )
+    )
+
+    # --------------------------------------------------------------------------
     # Install required software one each server
     # --------------------------------------------------------------------------
     connection = remote.ConnectionArgs(
@@ -105,8 +133,30 @@ def main():
         rsw_url = "https://download2.rstudio.org/server/bionic/amd64/rstudio-workbench-2022.02.3-492.pro3-amd64.deb"
         rsw_filename = "rstudio-workbench-2022.02.3-492.pro3-amd64.deb"
 
+    tls_crt_setup = remote.Command(
+        "server-set-tls-crt",
+        create=pulumi.Output.concat(
+            '''sudo echo "''',
+            ca_cert.cert_pem,
+            '''" > ~/server.crt'''
+        ),
+        connection=connection, 
+        opts=pulumi.ResourceOptions(depends_on=[rsw_server, ca_cert, ca_private_key])
+    )
+    
+    tls_key_setup = remote.Command(
+        "server-set-tls-key",
+        create=pulumi.Output.concat(
+            '''sudo echo "''',
+            ca_private_key.private_key_pem,
+            '''" > ~/server.key'''
+        ),
+        connection=connection, 
+        opts=pulumi.ResourceOptions(depends_on=[rsw_server, ca_cert, ca_private_key])
+    )
+
     command_set_env = remote.Command(
-        f"server-set-env", 
+        "server-set-env", 
         create=pulumi.Output.concat(
             f'''echo "export SERVER_IP_ADDRESS=''', 
             rsw_server.public_ip,
@@ -143,18 +193,18 @@ def main():
     )
 
     command_copy_justfile = remote.CopyFile(
-        f"server-copy-justfile",  
+        f"server-copy-justfile-",  
         local_path="server-side-justfile", 
         remote_path='justfile', 
         connection=connection, 
         opts=pulumi.ResourceOptions(depends_on=[rsw_server])
     )
 
-    command_build_rsw = remote.Command(
-        f"server-build-rsw", 
-        create="""export PATH="$PATH:$HOME/bin"; just build-rsw""", 
-        connection=connection, 
-        opts=pulumi.ResourceOptions(depends_on=[command_copy_justfile])
-    )
+    # command_build_rsw = remote.Command(
+    #     f"server-build-rsw", 
+    #     create="""export PATH="$PATH:$HOME/bin"; just build-rsw""", 
+    #     connection=connection, 
+    #     opts=pulumi.ResourceOptions(depends_on=[command_copy_justfile])
+    # )
 
 main()

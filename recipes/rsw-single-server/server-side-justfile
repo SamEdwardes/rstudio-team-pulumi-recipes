@@ -34,7 +34,7 @@ build-rsw:
     sudo cp -r /etc/rstudio /etc/rstudio-original-conf-files
 
     # Set up SSL
-    just ssl-self-sign-cert
+    just ssl-copy-files
     
     # Set up config files
     just set-rserver-conf
@@ -78,6 +78,14 @@ install-vscode:
     sudo rstudio-server install-vs-code /opt/code-server
 
 # -----------------------------------------------------------------------------
+# SSL
+# -----------------------------------------------------------------------------
+
+ssl-copy-files:
+    sudo cp ~/server.key /etc/ssl/server.key
+    sudo cp ~/server.crt /etc/ssl/server.crt
+
+# -----------------------------------------------------------------------------
 # Linux mgmt
 # -----------------------------------------------------------------------------
 
@@ -89,10 +97,6 @@ add-user name password:
 symlink-r:
     sudo ln -s /opt/R/{{R_VERSION}}/bin/R /usr/local/bin/R
     sudo ln -s /opt/R/{{R_VERSION}}/bin/Rscript /usr/local/bin/Rscript
-
-ssl-self-sign-cert:
-    just set-ssl-san-cnf
-    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/server.key -out /etc/ssl/server.crt -config /etc/ssl/san.cnf
 
 # -----------------------------------------------------------------------------
 # Configuration files
@@ -143,33 +147,6 @@ set-vscode-extensions-conf:
     quarto.quarto
     Ikuyadeu.r
     ms-python.python
-    EOF'
-
-# -----------------------------------------------------------------------------
-# SSL
-# -----------------------------------------------------------------------------
-
-set-ssl-san-cnf:
-    #!/bin/bash
-    sudo bash -c 'cat <<EOF > /etc/ssl/san.cnf
-    [req]
-    default_bits  = 2048
-    distinguished_name = req_distinguished_name
-    req_extensions = req_ext
-    x509_extensions = v3_req
-    prompt = no
-    [req_distinguished_name]
-    countryName = XX
-    stateOrProvinceName = N/A
-    localityName = N/A
-    organizationName = Self-signed certificate
-    commonName = {{SERVER_PUBLIC_DNS}}
-    [req_ext]
-    subjectAltName = @alt_names
-    [v3_req]
-    subjectAltName = @alt_names
-    [alt_names]
-    IP.1 = {{SERVER_IP_ADDRESS}}
     EOF'
 
 # -----------------------------------------------------------------------------
