@@ -21,12 +21,16 @@ def main():
         private_key="XXXX"
     )
 
+    with open("server-side-justfile", mode="r") as f:
+        justfile_hash = pulumi.Output.concat(str(hash(f.read())))
+
     command_copy_justfile = remote.CopyFile(
         f"server-copy-justfile-",  
         local_path="server-side-justfile", 
         remote_path='justfile', 
         connection=connection, 
-        opts=pulumi.ResourceOptions(depends_on=[rsw_server])
+        opts=pulumi.ResourceOptions(depends_on=[rsw_server]),
+        triggers=[justfile_hash]
     )
 
 main()
