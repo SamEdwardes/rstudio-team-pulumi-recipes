@@ -83,7 +83,9 @@ install-vscode:
 
 ssl-copy-files:
     sudo cp ~/server.key /etc/ssl/server.key
+    sudo chmod 600 /etc/ssl/server.key
     sudo cp ~/server.crt /etc/ssl/server.crt
+    sudo chmod 600 /etc/ssl/server.crt
 
 # -----------------------------------------------------------------------------
 # Linux mgmt

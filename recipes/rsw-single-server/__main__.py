@@ -96,15 +96,15 @@ def main():
     # --------------------------------------------------------------------------
     # Create a new private CA
     ca_private_key = tls.PrivateKey("ca-private-key",
-        algorithm="ECDSA",
-        ecdsa_curve="P384"
+        algorithm="RSA",
+        rsa_bits="2048"
     )
 
     # Create a self signed cert
     ca_cert = tls.SelfSignedCert(
         "ca-self-signed-cert",
         private_key_pem=ca_private_key.private_key_pem,
-        is_ca_certificate=True,
+        is_ca_certificate=False,
         validity_period_hours=8760,
         allowed_uses=[
             "key_encipherment",
@@ -134,23 +134,25 @@ def main():
         rsw_filename = "rstudio-workbench-2022.02.3-492.pro3-amd64.deb"
 
     tls_crt_setup = remote.Command(
-        "server-set-tls-crt",
+        "server-copy-tls-crt",
         create=pulumi.Output.concat(
-            '''sudo echo "''',
+            '''echo "''',
             ca_cert.cert_pem,
             '''" > ~/server.crt'''
         ),
+        delete="rm ~/server.crt",
         connection=connection, 
         opts=pulumi.ResourceOptions(depends_on=[rsw_server, ca_cert, ca_private_key])
     )
-    
+
     tls_key_setup = remote.Command(
-        "server-set-tls-key",
+        "server-copy-tls-key",
         create=pulumi.Output.concat(
-            '''sudo echo "''',
+            ''' echo "''',
             ca_private_key.private_key_pem,
-            '''" > ~/server.key'''
+            '''" > ~/server.key''',
         ),
+        delete="rm ~/server.key",
         connection=connection, 
         opts=pulumi.ResourceOptions(depends_on=[rsw_server, ca_cert, ca_private_key])
     )
