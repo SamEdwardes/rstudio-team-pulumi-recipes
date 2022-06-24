@@ -1,11 +1,16 @@
+set dotenv-load
+RSW_LICENSE := env_var("RSW_LICENSE")
+EMAIL := env_var_or_default("EMAIL", "email@example.com")
+
 LOG_LEVEL := "3"
 LOG_FILE := "_logs.txt"
 
-ssh-echo:
-    @echo "ssh -i ${AWS_PRIVATE_KEY_PATH} -o StrictHostKeyChecking=no ubuntu@$(pulumi stack output rsw_public_dns)"
+# ------------------------------------------------------------------------------
+# General
+# ------------------------------------------------------------------------------
 
 ssh:
-    ssh -i ${AWS_PRIVATE_KEY_PATH} -o StrictHostKeyChecking=no ubuntu@$(pulumi stack output rsw_public_dns)
+    ssh -i key.pem -o StrictHostKeyChecking=no ubuntu@$(pulumi stack output rsw_public_dns)
 
 up:
     pulumi up -y --logtostderr -v={{LOG_LEVEL}} 2> {{LOG_FILE}}
@@ -16,5 +21,51 @@ destroy:
 open:
     open https://$(pulumi stack output rsw_public_dns)
 
-ip-echo:
-    echo $(pulumi stack output rsw_public_ip)
+
+init py='python' stackname='dev':
+    {{py}} -m venv venv
+    source venv/bin/activate
+    venv/bin/python -m pip install --upgrade pip wheel
+    venv/bin/pip install -r requirements.txt
+    pulumi stack init {{stackname}}
+    pulumi stack select {{stackname}}
+    just new-key-pair
+    pulumi config set email {{EMAIL}}
+    pulumi config set --secret rsw_license $RSW_LICENSE
+    pulumi config set daily false
+    cat key.pub | pulumi config set public_key
+    pulumi up
+
+clean stackname='dev':
+    rm -f Pulumi.$(pulumi stack --show-name).yaml
+    rm -rf venv
+    rm -rf __pycache__
+    rm -f _logs.txt
+    just delete-key-pair
+    pulumi stack rm {{stackname}}
+
+# ------------------------------------------------------------------------------
+# KeyPairs
+# ------------------------------------------------------------------------------
+
+new-key-pair:
+    just delete-key-pair
+    just new-key-pair-script
+    chmod 400 key.pem
+    cat key.pub | pulumi config set public_key
+
+delete-key-pair:
+    rm -f key.pem key.pub
+
+new-key-pair-script:
+    #!./venv/bin/python
+    import pulumi
+    from Crypto.PublicKey import RSA
+    key = RSA.generate(2048)
+    private_key = key.exportKey("PEM")
+    public_key = key.publickey().exportKey("OpenSSH")
+    with open("key.pem", "w") as f:
+        f.write(private_key.decode())
+    with open("key.pub", "w") as f:
+        f.write(public_key.decode())
+

@@ -1,5 +1,7 @@
 # Added by Sam
 *_logs.txt
+*key.pem
+*key.pub
 *.vscode
 
 # Byte-compiled / optimized / DLL files

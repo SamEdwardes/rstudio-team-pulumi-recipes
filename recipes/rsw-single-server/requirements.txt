@@ -5,3 +5,5 @@ pulumi-tls
 requests
 rich
 wheel
+Jinja2
+pycryptodome
