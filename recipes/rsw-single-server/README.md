@@ -42,6 +42,7 @@ Set the following pulumi configuration values:
 pulumi config set email <XXXX>
 pulumi config set --secret rsw_license $RSW_LICENSE
 pulumi config set daily false
+pulumi config set ssl false
 cat key.pub | pulumi config set public_key
 ```
 

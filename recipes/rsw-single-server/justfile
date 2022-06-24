@@ -1,6 +1,8 @@
 set dotenv-load
 RSW_LICENSE := env_var("RSW_LICENSE")
-EMAIL := env_var_or_default("EMAIL", "email@example.com")
+RSW_EMAIL := env_var_or_default("RSW_EMAIL", "email@example.com")
+RSW_SSL := env_var_or_default("RSW_SSL", "false")
+RSW_DAILY := env_var_or_default("RSW_DAILY", "false")
 
 LOG_LEVEL := "3"
 LOG_FILE := "_logs.txt"
@@ -19,7 +21,7 @@ destroy:
     pulumi destroy -y --logtostderr -v={{LOG_LEVEL}} 2> {{LOG_FILE}}
 
 open:
-    open https://$(pulumi stack output rsw_public_dns)
+    open {{ if RSW_SSL == "true" { "http://$(pulumi stack output rsw_public_ip):8787" } else { "https://$(pulumi stack output rsw_public_dns)" } }}
 
 
 init py='python' stackname='dev':
@@ -30,13 +32,15 @@ init py='python' stackname='dev':
     pulumi stack init {{stackname}}
     pulumi stack select {{stackname}}
     just new-key-pair
-    pulumi config set email {{EMAIL}}
+    pulumi config set email {{RSW_EMAIL}}
     pulumi config set --secret rsw_license $RSW_LICENSE
-    pulumi config set daily false
+    pulumi config set daily {{RSW_DAILY}}
+    pulumi config set ssl {{RSW_SSL}}
     cat key.pub | pulumi config set public_key
     pulumi up
 
 clean stackname='dev':
+    pulumi destroy
     rm -f Pulumi.$(pulumi stack --show-name).yaml
     rm -rf venv
     rm -rf __pycache__

@@ -19,6 +19,7 @@ class ConfigValues:
     email: str = field(default_factory=lambda: config.require("email"))
     rsw_license: str = field(default_factory=lambda: config.require("rsw_license"))
     daily: bool = field(default_factory=lambda: config.require("daily").lower() in ("yes", "true", "t", "1"))
+    ssl: bool = field(default_factory=lambda: config.require("ssl").lower() in ("yes", "true", "t", "1"))
     public_key: str = field(default_factory=lambda: config.require("public_key"))
 
 
@@ -203,7 +204,7 @@ def main():
         "copy ~/rserver.conf",
         create=pulumi.Output.concat(
             'echo "', 
-            pulumi.Output.all(rsw_server.public_ip).apply(lambda x: create_template(file_path_rserver).render()), 
+            pulumi.Output.all(rsw_server.public_ip).apply(lambda x: create_template(file_path_rserver).render(ssl=CONFIG_VALUES.ssl)), 
             '" > ~/rserver.conf'
         ),
         connection=connection, 
