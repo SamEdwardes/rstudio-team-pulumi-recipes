@@ -6,7 +6,9 @@
 
 ## Usage
 
-There are two primary files:
+Before getting started please read the project [README](../../README.md) to ensure you have all of the required dependencies installed.
+
+There are three primary files / directories:
 
 - `__main__.py`: contains the python code that will stand up the AWS resources.
 - `server-side-justfile`: contains the commands required to install RSW and the required dependencies. This file will be copied to each ec2 instance so that it can be executed on the server.
@@ -28,15 +30,20 @@ Select your pulumi stack.
 pulumi stack select dev
 ```
 
+Create a new key pair to be used with AWS:
+
+```
+just new-key-pair
+```
+
 Set the following pulumi configuration values:
 
 ```bash
-pulumi config set email <XXXX>                 # Will be assigned to `rs:owner` tag in AWS
-pulumi config set name <XXXX>                  # Will be used with the `Name` tag in AWS to easily identify your resources
-pulumi config set aws_private_key_path <XXXX>  # The location of your aws private key, for example /Users/sam/sam-aws-key.pem
-pulumi config set aws_ssh_key_id <XXXX>        # The ID if your SSH - can be founds in the AWS UI
-pulumi config set --secret rsw_license <XXXX>
-pulumi config set daily false                  # Should be `true` or `false`. If `true` will use the daily build.
+pulumi config set email <XXXX>
+pulumi config set --secret rsw_license $RSW_LICENSE
+pulumi config set daily false
+pulumi config set ssl false
+cat key.pub | pulumi config set public_key
 ```
 
 ### Step 3: Spin up infra

@@ -8,6 +8,16 @@ Recipes for deploying RStudio infrastructure with Pulumi.
 
 All of the recipes require that you have Pulumi set up and running on your computer. If this is your first time using Pulumi we recommend that you follow along with the Pulumi getting started tutorial: <https://www.pulumi.com/docs/get-started/aws/begin/>.
 
+### Install justfile
+
+On mac:
+
+```bash
+brew install just
+```
+
+*For other operating systems see <https://github.com/casey/just#packages>.
+
 ### Install Pulumi
 
 Install Pulumi:
