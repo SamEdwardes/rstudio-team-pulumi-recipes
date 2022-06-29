@@ -135,3 +135,4 @@ dmypy.json
 .pyre/
 recipes/rsw-ha/Pulumi.dev.yaml
 recipes/rsw-single-server/Pulumi.dev.yaml
+recipes/rsw-single-server-fsx-lustre/Pulumi.dev.yaml
